@@ -1,0 +1,67 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build release APK
+        env:
+          # اختياري: Web client ID. لو تركته فارغًا يُقرأ من app/google-services.json
+          WEB_CLIENT_ID: ${{ vars.WEB_CLIENT_ID }}
+        run: gradle :app:assembleRelease --stacktrace
+
+      - name: Show signing fingerprints (add SHA-1 and SHA-256 to Firebase)
+        run: |
+          keytool -list -v -keystore app/keystore/drwael-release.jks -storepass 'DrWael@Store2026' \
+            | grep -E "Alias|SHA1|SHA256" | tee fingerprint.txt
+          {
+            echo '### Signing fingerprints'
+            echo '```'
+            cat fingerprint.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk dist/DrWael-release.apk
+          ls -la dist
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DrWael-APK
+          path: |
+            dist/DrWael-release.apk
+            fingerprint.txt
+          if-no-files-found: error
