@@ -3,65 +3,102 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
-  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install SDK packages
+      - name: Find the Gradle project folder
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+          S=$(find . -maxdepth 3 -name settings.gradle.kts -not -path './.git/*' | head -1)
+          if [ -z "$S" ]; then
+            echo "::error::settings.gradle.kts not found. Upload the project files at the repository root."
+            ls -R | head -50
+            exit 1
+          fi
+          D=$(dirname "$S")
+          echo "PROJECT_DIR=$D" >> "$GITHUB_ENV"
+          echo "Project folder: $D"
+          test -f "$D/app/google-services.json" || { echo "::error::app/google-services.json is missing"; exit 1; }
+          test -f "$D/app/src/main/assets/index.html" || { echo "::error::app/src/main/assets/index.html is missing"; exit 1; }
+
+      - name: Android SDK packages
+        run: |
+          set +e
+          SM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SM" ] || SM=$(command -v sdkmanager)
+          yes | "$SM" --licenses > /dev/null 2>&1
+          "$SM" "platforms;android-35" "build-tools;35.0.0" > /dev/null 2>&1
+          exit 0
+
+      - name: Optional signing key from secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$PROJECT_DIR/app/keystore/drwael-release.jks"
+            echo "Using signing key from repository secrets"
+          fi
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v5
         with:
           gradle-version: '8.9'
 
       - name: Build release APK
         env:
-          # اختياري: Web client ID. لو تركته فارغًا يُقرأ من app/google-services.json
+          VERSION_CODE: ${{ github.run_number }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           WEB_CLIENT_ID: ${{ vars.WEB_CLIENT_ID }}
-        run: gradle :app:assembleRelease --stacktrace
-
-      - name: Show signing fingerprints (add SHA-1 and SHA-256 to Firebase)
         run: |
-          keytool -list -v -keystore app/keystore/drwael-release.jks -storepass 'DrWael@Store2026' \
-            | grep -E "Alias|SHA1|SHA256" | tee fingerprint.txt
-          {
-            echo '### Signing fingerprints'
-            echo '```'
-            cat fingerprint.txt
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          gradle -p "$PROJECT_DIR" :app:assembleRelease --stacktrace \
+            -PversionCode="$VERSION_CODE" -PversionName="1.0.$VERSION_CODE"
 
-      - name: Rename APK
+      - name: Collect APK and fingerprints
+        env:
+          VERSION_NAME: 1.0.${{ github.run_number }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
           mkdir -p dist
-          cp app/build/outputs/apk/release/*.apk dist/DrWael-release.apk
-          ls -la dist
+          cp "$PROJECT_DIR"/app/build/outputs/apk/release/*.apk "dist/DrWael-$VERSION_NAME.apk"
+          echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
+          keytool -list -v -keystore "$PROJECT_DIR/app/keystore/drwael-release.jks" \
+            -storepass "${KEYSTORE_PASSWORD:-DrWael@Store2026}" 2>/dev/null | grep -E "Alias|SHA1|SHA256" | tee dist/fingerprint.txt || true
+          {
+            echo "### DrWael $VERSION_NAME"
+            echo '```'
+            cat dist/fingerprint.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+        shell: bash
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v5
         with:
           name: DrWael-APK
-          path: |
-            dist/DrWael-release.apk
-            fingerprint.txt
+          path: dist/*
           if-no-files-found: error
+
+      - name: Publish release (in-app update)
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git log -1 --pretty=%B > notes.txt || echo "DrWael $VERSION_NAME" > notes.txt
+          gh release create "v$VERSION_NAME" "dist/DrWael-$VERSION_NAME.apk" \
+            --title "DrWael $VERSION_NAME" --notes-file notes.txt --latest
