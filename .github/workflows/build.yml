@@ -25,10 +25,19 @@ jobs:
 
       - name: Find the Gradle project folder
         run: |
-          S=$(find . -maxdepth 3 -name settings.gradle.kts -not -path './.git/*' | head -1)
+          S=$(find . -maxdepth 4 -name settings.gradle.kts -not -path './.git/*' -not -path './_project/*' | head -1)
           if [ -z "$S" ]; then
-            echo "::error::settings.gradle.kts not found. Upload the project files at the repository root."
-            ls -R | head -50
+            Z=$(find . -maxdepth 2 -iname '*.zip' -not -path './.git/*' | head -1)
+            if [ -n "$Z" ]; then
+              echo "Project files not found, extracting $Z"
+              mkdir -p _project
+              unzip -q -o "$Z" -d _project
+              S=$(find _project -maxdepth 4 -name settings.gradle.kts | head -1)
+            fi
+          fi
+          if [ -z "$S" ]; then
+            echo "::error::No Gradle project found. Upload DrWael-Android-Project.zip to the repository root (or the extracted files)."
+            ls -la
             exit 1
           fi
           D=$(dirname "$S")
