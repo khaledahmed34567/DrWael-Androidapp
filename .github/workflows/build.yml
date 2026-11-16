@@ -85,6 +85,7 @@ jobs:
         run: |
           mkdir -p dist
           cp "$PROJECT_DIR"/app/build/outputs/apk/release/*.apk "dist/DrWael-$VERSION_NAME.apk"
+          cp "dist/DrWael-$VERSION_NAME.apk" dist/DrWael.apk
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           keytool -list -v -keystore "$PROJECT_DIR/app/keystore/drwael-release.jks" \
             -storepass "${KEYSTORE_PASSWORD:-DrWael@Store2026}" 2>/dev/null | grep -E "Alias|SHA1|SHA256" | tee dist/fingerprint.txt || true
@@ -109,5 +110,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           git log -1 --pretty=%B > notes.txt || echo "DrWael $VERSION_NAME" > notes.txt
-          gh release create "v$VERSION_NAME" "dist/DrWael-$VERSION_NAME.apk" \
+          gh release create "v$VERSION_NAME" "dist/DrWael-$VERSION_NAME.apk" "dist/DrWael.apk" \
             --title "DrWael $VERSION_NAME" --notes-file notes.txt --latest
