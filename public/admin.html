@@ -725,6 +725,15 @@ match /settings/appdl { allow read: if true; allow write: if adm(); }`;
           </div>
           <label class="lbl">updateNotes</label>
           <textarea class="fi" id="u_notes" rows="3">${esc(st.updateNotes || '')}</textarea>
+          <div class="grid2">
+            <div>
+              <label class="lbl">${L('انتهاء عرض برو المجاني (اختياري)', 'Free Pro Promo Until (optional)')}</label>
+              <input class="fi" id="u_proUntil" type="datetime-local" dir="ltr" value="${esc(toDatetimeLocal(st.freeProUntil || Date.UTC(2027, 10, 22, 23, 59, 59)))}">
+            </div>
+            <div style="display:flex;align-items:center">
+              <label class="agree"><input type="checkbox" id="u_proOn" ${st.freeProEnabled !== false ? 'checked' : ''}><span>${L('تفعيل برو مجانًا للطلاب (بدون الدورات)', 'Enable Free Pro Promo (Excludes Paid Courses)')}</span></label>
+            </div>
+          </div>
           <label class="agree"><input type="checkbox" id="u_force" ${st.forceUpdate ? 'checked' : ''}><span>${L('تحديث إجباري (forceUpdate)', 'Force Update (forceUpdate)')}</span></label>
           <button class="btn navy" id="saveUpd">${L('حفظ إعدادات التحديث', 'Save Update Settings')}</button>
         </div>
@@ -737,6 +746,8 @@ match /settings/appdl { allow read: if true; allow write: if adm(); }`;
       `;
 
       $('#saveUpd').onclick = async () => {
+        const proRaw = $('#u_proUntil').value;
+        const freeProUntil = proRaw ? new Date(proRaw).getTime() : Date.UTC(2027, 10, 22, 23, 59, 59);
         await db.doc('settings/app').set({
           webVer: $('#u_webVer').value.trim(),
           androidVer: $('#u_androidVer').value.trim(),
@@ -745,6 +756,8 @@ match /settings/appdl { allow read: if true; allow write: if adm(); }`;
           desktopUrl: $('#u_desktopUrl').value.trim(),
           updateNotes: $('#u_notes').value.trim(),
           forceUpdate: $('#u_force').checked,
+          freeProEnabled: $('#u_proOn').checked,
+          freeProUntil: freeProUntil > 0 ? freeProUntil : Date.UTC(2027, 10, 22, 23, 59, 59),
         }, { merge: true });
         toast(L('تم حفظ إعدادات التحديث في settings/app', 'Saved settings/app'));
       };
