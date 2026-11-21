@@ -1,0 +1,5 @@
+{
+  "name": "Dr. Wael",
+  "description": "Dr. Wael veterinary medicine learning platform (migrated from Android WebView assets to Node.js web server)",
+  "requestFramePermissions": []
+}

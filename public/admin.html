@@ -1,0 +1,760 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#B22127">
+  <title>Dr. Wael Admin · لوحة إدارة د. وائل</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <style>
+    @font-face{font-family:AJ;font-weight:400;src:url(/fonts/aj_400.ttf) format("truetype")}
+    @font-face{font-family:AJ;font-weight:700;src:url(/fonts/aj_700.ttf) format("truetype")}
+    :root{--navy:#3a0a0e;--navy2:#8f1a20;--gold:#f5a83a;--gold2:#ffc766;--bg:#f1f1f4;--card:#fff;--ink:#101426;--mute:#6b7089;--line:#e4e5ee;--ok:#1f9d66;--err:#d6455d}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:AJ,system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6}
+    button,input,select,textarea{font-family:inherit}
+    .hide{display:none!important}
+    .hero{background:linear-gradient(180deg,#B22127 0%,#3a0a0e 100%);color:#fff;padding:18px 20px 20px;border-radius:0 0 26px 26px;box-shadow:0 8px 24px rgba(58,10,14,.18)}
+    .top{max-width:1160px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand b{font-size:20px}
+    .badge-pill{padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);font-size:12.5px;font-weight:700;color:#fff}
+    .wrap{max-width:1160px;margin:18px auto 60px;padding:0 16px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .tab{padding:10px 16px;border-radius:999px;background:#fff;border:1px solid var(--line);font-weight:700;cursor:pointer;color:var(--ink);transition:.15s}
+    .tab.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+    .card{background:var(--card);border-radius:22px;padding:18px;box-shadow:0 2px 14px rgba(20,25,60,.06);margin-bottom:14px}
+    .card h2,.card h3{margin-bottom:10px;font-size:18px}
+    .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+    .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+    .fi,select.fi,textarea.fi{width:100%;padding:11px 13px;border-radius:14px;border:1.5px solid var(--line);background:#fafafd;font-size:14.5px;margin-bottom:10px;color:var(--ink)}
+    .fi:focus{outline:none;border-color:var(--navy2);background:#fff}
+    label.lbl{display:block;font-size:12.5px;font-weight:700;color:var(--mute);margin-bottom:4px}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:999px;border:0;font-weight:700;font-size:14.5px;cursor:pointer;text-decoration:none;transition:.15s}
+    .btn.gold{background:var(--gold);color:#1a1200}
+    .btn.navy{background:var(--navy);color:#fff}
+    .btn.ghost{background:#eceef6;color:var(--ink)}
+    .btn.err{background:#fdeaee;color:var(--err)}
+    .btn.ok{background:#e7f8ef;color:var(--ok)}
+    .btn.sm{padding:7px 12px;font-size:13px}
+    .item{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:13px 14px;border-radius:16px;background:#f7f8fc;border:1px solid var(--line);margin-bottom:8px;flex-wrap:wrap}
+    .small{font-size:13px;color:var(--mute)}
+    .chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:#eceef6;font-size:12px;font-weight:700}
+    .chip.gold{background:#fff3d6;color:#7a4e00}
+    .chip.ok{background:#e7f8ef;color:#116b45}
+    .chip.err{background:#fdeaee;color:var(--err)}
+    .stat{padding:12px 14px;border-radius:14px;font-weight:700;margin-top:8px}
+    .stat.ok{background:#e7f8ef;color:#116b45}
+    .stat.err{background:#fdeaee;color:var(--err)}
+    .auth-box{max-width:440px;margin:48px auto}
+    .row-acts{display:flex;gap:6px;flex-wrap:wrap}
+    .agree{display:flex;align-items:center;gap:8px;font-weight:700;margin-bottom:10px;cursor:pointer}
+    pre.rules{background:#121629;color:#e6ebff;padding:14px;border-radius:14px;overflow:auto;font-size:12.5px;line-height:1.5;direction:ltr;text-align:left;max-height:360px}
+    .toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#101426;color:#fff;padding:11px 18px;border-radius:999px;font-weight:700;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="top">
+      <div class="brand">
+        <b id="appTitle">د. وائل · لوحة الإدارة</b>
+        <span class="badge-pill" id="admStatus">Admin</span>
+      </div>
+      <div class="row-acts">
+        <button class="badge-pill" id="langBtn" style="cursor:pointer">English</button>
+        <a class="badge-pill" href="/" style="text-decoration:none" id="studentLink">منصة الطلاب</a>
+        <button class="badge-pill hide" id="logoutBtn" style="cursor:pointer">تسجيل الخروج</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="loginCard" class="card auth-box">
+      <h2 id="loginTitle">تسجيل دخول الإدارة</h2>
+      <p class="small" id="loginSub" style="margin-bottom:12px">سجّل بحساب الأدمن المصرّح له لإدارة الدورات والمهام والتقييمات والإصدارات.</p>
+      <input class="fi" id="em" type="email" dir="ltr" placeholder="admin@example.com">
+      <input class="fi" id="pw" type="password" placeholder="••••••••">
+      <button class="btn gold" id="loginBtn" style="width:100%">دخول</button>
+      <button class="btn ghost" id="googleBtn" style="width:100%;margin-top:8px">الدخول بحساب جوجل</button>
+      <div id="loginMsg"></div>
+    </section>
+
+    <section id="panel" class="hide">
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-t="courses">الدورات والمحتوى</button>
+        <button class="tab" data-t="reviews">تقييمات الدورات</button>
+        <button class="tab" data-t="students">الطلاب والأوسمة</button>
+        <button class="tab" data-t="updates">الإصدارات والتحميل المالك</button>
+      </div>
+      <div id="view"></div>
+    </section>
+  </main>
+
+  <script>
+    const $ = (s, p = document) => p.querySelector(s);
+    const $$ = (s, p = document) => [...p.querySelectorAll(s)];
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+    const OWNER_HTML_DL_URL = 'https://ais-dev-ib6zqhmdkwmky5rvtuie7u-262382091441.europe-west2.run.app/download/html?key=b6a428fdb65cb140edcc60b1930257916ee855e47f5f4b95d40cce378f09b9f4';
+
+    const CFG = (() => {
+      const k = 'dW$wL#9xQ!2zR';
+      const s = atob('H3VFByVoXAFzGxJYEy0tRSQ1YX4nKVZTOSc9MhAFHVZeSBJqShNrJnpjBgIaVDN8TAY3cEh3BhY5V1E8PkxTEzxGbQRVJ0tMDzBYXhM2STZGFH4QFx44U1cYMxcyRQc8DVoXPAMeWnAUJUsdKUBNMTUDCFpwDz9RAC1aVRE1DFMYMVZkBltsAUoMPlNTHTcmIkccKVcbQnEDWRInEzZdGyVHFBkzQgBJfAI+VhIuQkodIlVdCDMDMgoWPFMbVHEDXx8hFzZDHiJEah0/RVcIGwB1HlduEQFNaRUKTmJWZBxHbg8ZWjBRQjM2Rm0EVX0ZC0BkGQZCZlRlF098GU4dMxsHHDBcMxRCeBVdTmZEAUNrVGcQQnoaG1RxA1sXNQY1Bk1sAQpOMxFXSGRRb0ETekVYHGNCU05qVG8VQ3gRX0lkEgsYcBk=');
+      let o = '';
+      for (let i = 0; i < s.length; i++) o += String.fromCharCode(s.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+      return JSON.parse(o);
+    })();
+
+    firebase.initializeApp(CFG);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let lang = localStorage.getItem('dw_admin_lang') || 'ar';
+    const L = (ar, en) => (lang === 'ar' ? ar : en);
+    const toast = (m) => {
+      const d = document.createElement('div');
+      d.className = 'toast';
+      d.textContent = m;
+      document.body.appendChild(d);
+      setTimeout(() => d.remove(), 3500);
+    };
+
+    const MILESTONES = [
+      ['first-step', 'الخطوة الأولى', 'First Step', 'إتمام مهمة واحدة', 'Complete 1 task'],
+      ['dedicated-10', 'مجتهد (10)', 'Dedicated (10)', 'إتمام 10 مهام', 'Complete 10 tasks'],
+      ['scholar-25', 'باحث متفوق (25)', 'Scholar (25)', 'إتمام 25 مهمة', 'Complete 25 tasks'],
+      ['course-1', 'إتمام دورة', 'Course Finisher', 'إتمام دورة بنسبة 100%', 'Complete 1 course 100%'],
+      ['courses-3', 'ثلاثية التفوق', 'Triple Mastery', 'إتمام 3 دورات بنسبة 100%', 'Complete 3 courses 100%'],
+      ['streak-3', 'انتظام 3 أيام', '3-Day Streak', 'نشاط 3 أيام متتالية', '3 consecutive study days'],
+      ['streak-7', 'انتظام أسبوعي', '7-Day Streak', 'نشاط 7 أيام متتالية', '7 consecutive study days'],
+      ['study-60', 'ساعة تركيز', 'Focus Hour', '60 دقيقة بمؤقت بومودورو', '60 Pomodoro minutes'],
+      ['reviewer-1', 'ناقد بنّاء', 'First Reviewer', 'كتابة أول مراجعة لدورة', 'Write first course review'],
+    ];
+
+    let U = null;
+    let P = null;
+    let curTab = 'courses';
+    let COURSES = [];
+    let LECTURES = [];
+    let TASKS = [];
+    let SELECTED_COURSE = '';
+
+    function applyLang() {
+      document.documentElement.lang = lang;
+      document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
+      $('#appTitle').textContent = L('د. وائل · لوحة الإدارة', 'Dr. Wael · Admin Panel');
+      $('#langBtn').textContent = lang === 'ar' ? 'English' : 'العربية';
+      $('#studentLink').textContent = L('منصة الطلاب', 'Student Platform');
+      $('#logoutBtn').textContent = L('تسجيل الخروج', 'Sign out');
+      $('#loginTitle').textContent = L('تسجيل دخول الإدارة', 'Admin Sign In');
+      $('#loginSub').textContent = L('سجّل بحساب الأدمن المصرّح له لإدارة الدورات والمهام والتقييمات والإصدارات.', 'Sign in with an authorized admin account to manage courses, tasks, reviews, and releases.');
+      $('#loginBtn').textContent = L('دخول', 'Sign in');
+      $('#googleBtn').textContent = L('الدخول بحساب جوجل', 'Sign in with Google');
+      const tabLabels = {
+        courses: L('الدورات والمحتوى', 'Courses & Content'),
+        reviews: L('تقييمات الدورات', 'Course Reviews'),
+        students: L('الطلاب والأوسمة', 'Students & Badges'),
+        updates: L('الإصدارات والتحميل المالك', 'Releases & Owner HTML'),
+      };
+      $$('#tabs .tab').forEach((b) => (b.textContent = tabLabels[b.dataset.t]));
+      if (!$('#panel').classList.contains('hide')) renderTab();
+    }
+
+    $('#langBtn').onclick = () => {
+      lang = lang === 'ar' ? 'en' : 'ar';
+      localStorage.setItem('dw_admin_lang', lang);
+      applyLang();
+    };
+
+    $('#loginBtn').onclick = async () => {
+      $('#loginMsg').innerHTML = '';
+      try {
+        await auth.signInWithEmailAndPassword($('#em').value.trim(), $('#pw').value);
+      } catch (e) {
+        $('#loginMsg').innerHTML = `<div class="stat err">${esc(e.message)}</div>`;
+      }
+    };
+
+    $('#googleBtn').onclick = async () => {
+      $('#loginMsg').innerHTML = '';
+      try {
+        await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+      } catch (e) {
+        $('#loginMsg').innerHTML = `<div class="stat err">${esc(e.message)}</div>`;
+      }
+    };
+
+    $('#logoutBtn').onclick = () => auth.signOut();
+
+    auth.onAuthStateChanged(async (u) => {
+      if (!u) {
+        U = P = null;
+        $('#loginCard').classList.remove('hide');
+        $('#panel').classList.add('hide');
+        $('#logoutBtn').classList.add('hide');
+        return;
+      }
+      const snap = await db.doc('users/' + u.uid).get().catch(() => null);
+      const prof = snap && snap.exists ? snap.data() : {};
+      const ok = prof.role === 'admin' || u.email === 'khwailedapp@gmail.com';
+      if (!ok) {
+        $('#loginMsg').innerHTML = `<div class="stat err">${L('هذا الحساب ليس لديه صلاحية الإدارة.', 'This account does not have admin privileges.')}</div>`;
+        await auth.signOut();
+        return;
+      }
+      U = u;
+      P = prof;
+      $('#loginCard').classList.add('hide');
+      $('#panel').classList.remove('hide');
+      $('#logoutBtn').classList.remove('hide');
+      $('#admStatus').textContent = esc(prof.nameAr || prof.nameEn || u.email);
+      await loadCore();
+      renderTab();
+    });
+
+    async function loadCore() {
+      const [cs, ls, ts] = await Promise.all([
+        db.collection('courses').get(),
+        db.collection('lectures').get(),
+        db.collection('tasks').get(),
+      ]);
+      COURSES = cs.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.year - b.year) || (a.term - b.term));
+      LECTURES = ls.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
+      TASKS = ts.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0));
+      if (!SELECTED_COURSE && COURSES.length) SELECTED_COURSE = COURSES[0].id;
+    }
+
+    async function syncCourseCounts(courseId) {
+      if (!courseId) return;
+      const [ls, ts] = await Promise.all([
+        db.collection('lectures').where('courseId', '==', courseId).get(),
+        db.collection('tasks').where('courseId', '==', courseId).get(),
+      ]);
+      const lectureCount = ls.size;
+      const taskCount = ts.size;
+      await db.doc('courses/' + courseId).set({ lectureCount, taskCount }, { merge: true });
+      const c = COURSES.find((x) => x.id === courseId);
+      if (c) {
+        c.lectureCount = lectureCount;
+        c.taskCount = taskCount;
+      }
+    }
+
+    function toDatetimeLocal(val) {
+      if (!val) return '';
+      let ms = 0;
+      if (typeof val === 'number') ms = val < 1e11 ? val * 1000 : val;
+      else if (val && typeof val.toMillis === 'function') ms = val.toMillis();
+      else if (val && typeof val.seconds === 'number') ms = val.seconds * 1000;
+      else if (typeof val === 'string') ms = Date.parse(val) || 0;
+      if (!ms) return '';
+      const d = new Date(ms);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
+    function fmtTs(val) {
+      if (!val) return '—';
+      let ms = 0;
+      if (typeof val === 'number') ms = val < 1e11 ? val * 1000 : val;
+      else if (val && typeof val.toMillis === 'function') ms = val.toMillis();
+      else if (val && typeof val.seconds === 'number') ms = val.seconds * 1000;
+      else if (typeof val === 'string') ms = Date.parse(val) || 0;
+      return ms ? new Date(ms).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB') : '—';
+    }
+
+    $$('#tabs .tab').forEach((b) => {
+      b.onclick = () => {
+        curTab = b.dataset.t;
+        $$('#tabs .tab').forEach((x) => x.classList.toggle('on', x === b));
+        renderTab();
+      };
+    });
+
+    function renderTab() {
+      if (curTab === 'courses') return renderCourses();
+      if (curTab === 'reviews') return renderReviews();
+      if (curTab === 'students') return renderStudents();
+      if (curTab === 'updates') return renderUpdates();
+    }
+
+    /* ---------------- 1. Courses, Lectures & Tasks ---------------- */
+    function renderCourses() {
+      const sel = COURSES.find((c) => c.id === SELECTED_COURSE) || null;
+      const cLecs = LECTURES.filter((l) => l.courseId === SELECTED_COURSE);
+      const cTasks = TASKS.filter((t) => t.courseId === SELECTED_COURSE);
+
+      $('#view').innerHTML = `
+        <div class="card">
+          <h2>${L('إضافة أو تعديل دورة', 'Create / Edit Course')}</h2>
+          <input type="hidden" id="c_id">
+          <div class="grid2">
+            <div><label class="lbl">${L('اسم الدورة (عربي)', 'Course Title (AR)')}</label><input class="fi" id="c_title"></div>
+            <div><label class="lbl">${L('اسم الدورة (إنجليزي)', 'Course Title (EN)')}</label><input class="fi" id="c_titleEn" dir="ltr"></div>
+            <div><label class="lbl">${L('اسم المحاضر (عربي)', 'Instructor (AR)')}</label><input class="fi" id="c_instAr" placeholder="د. وائل · فريق التدريس"></div>
+            <div><label class="lbl">${L('اسم المحاضر (إنجليزي)', 'Instructor (EN)')}</label><input class="fi" id="c_instEn" dir="ltr" placeholder="Dr. Wael · Teaching Team"></div>
+            <div><label class="lbl">${L('وسام الإتمام (عربي)', 'Completion Badge (AR)')}</label><input class="fi" id="c_badgeAr" placeholder="إتقان الدورة"></div>
+            <div><label class="lbl">${L('وسام الإتمام (إنجليزي)', 'Completion Badge (EN)')}</label><input class="fi" id="c_badgeEn" dir="ltr" placeholder="Course Mastery"></div>
+          </div>
+          <div class="grid3">
+            <div><label class="lbl">${L('الفرقة', 'Year')}</label><select class="fi" id="c_yr"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></div>
+            <div><label class="lbl">${L('الترم', 'Term')}</label><select class="fi" id="c_tm"><option value="1">1</option><option value="2">2</option></select></div>
+            <div><label class="lbl">${L('السعر (ج.م)', 'Price (EGP)')}</label><input class="fi" id="c_price" type="number" value="0"></div>
+          </div>
+          <label class="lbl">${L('رابط صورة الغلاف', 'Cover Image URL')}</label>
+          <input class="fi" id="c_cover" dir="ltr">
+          <div class="grid2">
+            <div><label class="lbl">${L('ملخص الدورة (عربي)', 'Summary (AR)')}</label><textarea class="fi" id="c_sumAr" rows="2"></textarea></div>
+            <div><label class="lbl">${L('ملخص الدورة (إنجليزي)', 'Summary (EN)')}</label><textarea class="fi" id="c_sumEn" dir="ltr" rows="2"></textarea></div>
+          </div>
+          <div class="row-acts">
+            <button class="btn gold" id="saveCourse">${L('حفظ الدورة', 'Save Course')}</button>
+            <button class="btn ghost" id="resetCourse">${L('دورة جديدة', 'New / Clear')}</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>${L('قائمة الدورات', 'Courses List')} (${COURSES.length})</h2>
+          ${COURSES.map((c) => `
+            <div class="item">
+              <div>
+                <b>${esc(c.title)}</b> <span class="small">${esc(c.titleEn || '')}</span>
+                <div class="small">${L('المحاضر', 'Instructor')}: ${esc(c.instructorAr || c.instructorEn || 'د. وائل · فريق التدريس')} · ${L('محاضرات', 'Lectures')}: <b>${c.lectureCount ?? LECTURES.filter((l) => l.courseId === c.id).length}</b> · ${L('مهام', 'Tasks')}: <b>${c.taskCount ?? TASKS.filter((t) => t.courseId === c.id).length}</b></div>
+                <div class="small">${L('الوسام', 'Badge')}: ${esc(c.badgeTitle || ('إتقان ' + c.title))}</div>
+              </div>
+              <div class="row-acts">
+                <button class="btn navy sm" data-selc="${esc(c.id)}">${L('إدارة المحتوى', 'Manage Content')}</button>
+                <button class="btn ghost sm" data-editc="${esc(c.id)}">${L('تعديل', 'Edit')}</button>
+                <button class="btn ghost sm" data-syncc="${esc(c.id)}">${L('تحديث العدادات', 'Sync Counts')}</button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        ${sel ? `
+        <div class="card">
+          <h2>${L('محتوى الدورة:', 'Course Content:')} ${esc(sel.title)}</h2>
+          <div class="grid2">
+            <div>
+              <h3>${L('المحاضرات', 'Lectures')} (${cLecs.length})</h3>
+              <input type="hidden" id="l_id">
+              <input class="fi" id="l_title" placeholder="${L('عنوان المحاضرة (عربي)', 'Lecture title (AR)')}">
+              <input class="fi" id="l_titleEn" dir="ltr" placeholder="${L('عنوان المحاضرة (إنجليزي)', 'Lecture title (EN)')}">
+              <input class="fi" id="l_order" type="number" placeholder="${L('الترتيب', 'Order')}" value="${cLecs.length + 1}">
+              <div class="row-acts" style="margin-bottom:12px">
+                <button class="btn gold sm" id="saveLec">${L('حفظ المحاضرة', 'Save Lecture')}</button>
+                <button class="btn ghost sm" id="resetLec">${L('جديد', 'Clear')}</button>
+              </div>
+              ${cLecs.map((l) => `
+                <div class="item">
+                  <div><b>${esc(l.order ?? 0)}. ${esc(l.title)}</b><div class="small">${esc(l.titleEn || '')}</div></div>
+                  <div class="row-acts">
+                    <button class="btn ghost sm" data-editl="${esc(l.id)}">${L('تعديل', 'Edit')}</button>
+                    <button class="btn err sm" data-dell="${esc(l.id)}">${L('حذف', 'Delete')}</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+            <div>
+              <h3>${L('المهام والمواعيد', 'Tasks & Deadlines')} (${cTasks.length})</h3>
+              <input type="hidden" id="t_id">
+              <select class="fi" id="t_lec">${cLecs.map((l) => `<option value="${esc(l.id)}">${esc(l.title)}</option>`).join('')}</select>
+              <input class="fi" id="t_title" placeholder="${L('عنوان المهمة (عربي)', 'Task title (AR)')}">
+              <input class="fi" id="t_titleEn" dir="ltr" placeholder="${L('عنوان المهمة (إنجليزي)', 'Task title (EN)')}">
+              <div class="grid2">
+                <select class="fi" id="t_type">
+                  <option value="video">video</option>
+                  <option value="audio">audio</option>
+                  <option value="pdf">pdf</option>
+                  <option value="text">text</option>
+                  <option value="quiz">quiz</option>
+                </select>
+                <input class="fi" id="t_order" type="number" placeholder="${L('الترتيب', 'Order')}" value="${cTasks.length + 1}">
+              </div>
+              <label class="lbl">${L('موعد التسليم (dueAt — اختياري)', 'Due Date (dueAt — optional)')}</label>
+              <input class="fi" id="t_dueAt" type="datetime-local" dir="ltr">
+              <input class="fi" id="t_url" dir="ltr" placeholder="${L('رابط المحتوى أو يوتيوب', 'Content or YouTube URL')}">
+              <input class="fi" id="t_fileId" dir="ltr" placeholder="${L('معرّف الملف أو Telegram fileId (اختياري)', 'File ID (optional)')}">
+              <textarea class="fi" id="t_body" rows="2" placeholder="${L('النص أو محتوى المهمة', 'Task body / text')}"></textarea>
+              <div class="row-acts" style="margin-bottom:12px">
+                <button class="btn gold sm" id="saveTask">${L('حفظ المهمة', 'Save Task')}</button>
+                <button class="btn ghost sm" id="resetTask">${L('جديد', 'Clear')}</button>
+              </div>
+              ${cTasks.map((tk) => `
+                <div class="item">
+                  <div>
+                    <b>${esc(tk.order ?? 0)}. ${esc(tk.title)}</b> <span class="chip">${esc(tk.type || 'text')}</span>
+                    <div class="small">${tk.dueAt || tk.deadline || tk.dueDate || tk.due ? `${L('موعد التسليم', 'Due')}: <b>${esc(fmtTs(tk.dueAt || tk.deadline || tk.dueDate || tk.due))}</b>` : L('بدون موعد تسليم', 'No deadline')}</div>
+                  </div>
+                  <div class="row-acts">
+                    <button class="btn ghost sm" data-editt="${esc(tk.id)}">${L('تعديل', 'Edit')}</button>
+                    <button class="btn err sm" data-delt="${esc(tk.id)}">${L('حذف', 'Delete')}</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+        ` : ''}
+      `;
+
+      $('#resetCourse').onclick = () => {
+        ['#c_id', '#c_title', '#c_titleEn', '#c_instAr', '#c_instEn', '#c_badgeAr', '#c_badgeEn', '#c_cover', '#c_sumAr', '#c_sumEn'].forEach((x) => ($(x).value = ''));
+        $('#c_price').value = '0';
+      };
+
+      $('#saveCourse').onclick = async () => {
+        const id = $('#c_id').value.trim();
+        const title = $('#c_title').value.trim();
+        if (!title) return toast(L('اكتب اسم الدورة', 'Enter course title'));
+        const payload = {
+          title,
+          titleEn: $('#c_titleEn').value.trim(),
+          instructorAr: $('#c_instAr').value.trim(),
+          instructorEn: $('#c_instEn').value.trim(),
+          badgeTitle: $('#c_badgeAr').value.trim(),
+          badgeTitleEn: $('#c_badgeEn').value.trim(),
+          summaryAr: $('#c_sumAr').value.trim(),
+          summaryEn: $('#c_sumEn').value.trim(),
+          year: Number($('#c_yr').value) || 1,
+          term: Number($('#c_tm').value) || 1,
+          price: Number($('#c_price').value) || 0,
+          cover: $('#c_cover').value.trim(),
+        };
+        if (id) {
+          await db.doc('courses/' + id).set(payload, { merge: true });
+          await syncCourseCounts(id);
+        } else {
+          payload.lectureCount = 0;
+          payload.taskCount = 0;
+          const ref = await db.collection('courses').add(payload);
+          SELECTED_COURSE = ref.id;
+        }
+        await loadCore();
+        renderCourses();
+        toast(L('تم حفظ الدورة', 'Course saved'));
+      };
+
+      $$('[data-selc]').forEach((b) => (b.onclick = () => { SELECTED_COURSE = b.dataset.selc; renderCourses(); }));
+      $$('[data-syncc]').forEach((b) => (b.onclick = async () => { await syncCourseCounts(b.dataset.syncc); renderCourses(); toast(L('تم تحديث العدادات', 'Counts synced')); }));
+      $$('[data-editc]').forEach((b) => (b.onclick = () => {
+        const c = COURSES.find((x) => x.id === b.dataset.editc);
+        if (!c) return;
+        $('#c_id').value = c.id;
+        $('#c_title').value = c.title || '';
+        $('#c_titleEn').value = c.titleEn || '';
+        $('#c_instAr').value = c.instructorAr || c.instructor || '';
+        $('#c_instEn').value = c.instructorEn || '';
+        $('#c_badgeAr').value = c.badgeTitle || '';
+        $('#c_badgeEn').value = c.badgeTitleEn || '';
+        $('#c_sumAr').value = c.summaryAr || c.summary || '';
+        $('#c_sumEn').value = c.summaryEn || '';
+        $('#c_yr').value = String(c.year || 1);
+        $('#c_tm').value = String(c.term || 1);
+        $('#c_price').value = String(c.price || 0);
+        $('#c_cover').value = c.cover || '';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }));
+
+      if (sel) {
+        $('#resetLec').onclick = () => { $('#l_id').value = ''; $('#l_title').value = ''; $('#l_titleEn').value = ''; };
+        $('#saveLec').onclick = async () => {
+          const title = $('#l_title').value.trim();
+          if (!title) return toast(L('اكتب عنوان المحاضرة', 'Enter lecture title'));
+          const id = $('#l_id').value.trim();
+          const data = {
+            courseId: sel.id,
+            title,
+            titleEn: $('#l_titleEn').value.trim(),
+            order: Number($('#l_order').value) || 0,
+          };
+          if (id) await db.doc('lectures/' + id).set(data, { merge: true });
+          else await db.collection('lectures').add(data);
+          await syncCourseCounts(sel.id);
+          await loadCore();
+          renderCourses();
+          toast(L('تم حفظ المحاضرة وتحديث العداد', 'Lecture saved & count updated'));
+        };
+        $$('[data-editl]').forEach((b) => (b.onclick = () => {
+          const l = LECTURES.find((x) => x.id === b.dataset.editl);
+          if (!l) return;
+          $('#l_id').value = l.id;
+          $('#l_title').value = l.title || '';
+          $('#l_titleEn').value = l.titleEn || '';
+          $('#l_order').value = String(l.order || 0);
+        }));
+        $$('[data-dell]').forEach((b) => (b.onclick = async () => {
+          await db.doc('lectures/' + b.dataset.dell).delete();
+          await syncCourseCounts(sel.id);
+          await loadCore();
+          renderCourses();
+          toast(L('تم حذف المحاضرة', 'Lecture deleted'));
+        }));
+
+        $('#resetTask').onclick = () => {
+          ['#t_id', '#t_title', '#t_titleEn', '#t_dueAt', '#t_url', '#t_fileId', '#t_body'].forEach((x) => ($(x).value = ''));
+        };
+        $('#saveTask').onclick = async () => {
+          const title = $('#t_title').value.trim();
+          const lectureId = $('#t_lec').value;
+          if (!title || !lectureId) return toast(L('اختر المحاضرة واكتب عنوان المهمة', 'Select lecture and enter task title'));
+          const id = $('#t_id').value.trim();
+          const dueRaw = $('#t_dueAt').value;
+          const dueMs = dueRaw ? new Date(dueRaw).getTime() : 0;
+          const data = {
+            courseId: sel.id,
+            lectureId,
+            title,
+            titleEn: $('#t_titleEn').value.trim(),
+            type: $('#t_type').value,
+            order: Number($('#t_order').value) || 0,
+            url: $('#t_url').value.trim(),
+            fileId: $('#t_fileId').value.trim(),
+            body: $('#t_body').value.trim(),
+            dueAt: dueMs > 0 ? firebase.firestore.Timestamp.fromMillis(dueMs) : firebase.firestore.FieldValue.delete(),
+          };
+          if (id) await db.doc('tasks/' + id).set(data, { merge: true });
+          else {
+            if (!(dueMs > 0)) delete data.dueAt;
+            await db.collection('tasks').add(data);
+          }
+          await syncCourseCounts(sel.id);
+          await loadCore();
+          renderCourses();
+          toast(L('تم حفظ المهمة وتحديث العداد', 'Task saved & count updated'));
+        };
+        $$('[data-editt]').forEach((b) => (b.onclick = () => {
+          const tk = TASKS.find((x) => x.id === b.dataset.editt);
+          if (!tk) return;
+          $('#t_id').value = tk.id;
+          $('#t_lec').value = tk.lectureId || '';
+          $('#t_title').value = tk.title || '';
+          $('#t_titleEn').value = tk.titleEn || '';
+          $('#t_type').value = tk.type || 'text';
+          $('#t_order').value = String(tk.order || 0);
+          $('#t_dueAt').value = toDatetimeLocal(tk.dueAt || tk.deadline || tk.dueDate || tk.due);
+          $('#t_url').value = tk.url || '';
+          $('#t_fileId').value = tk.fileId || '';
+          $('#t_body').value = tk.body || '';
+        }));
+        $$('[data-delt]').forEach((b) => (b.onclick = async () => {
+          await db.doc('tasks/' + b.dataset.delt).delete();
+          await syncCourseCounts(sel.id);
+          await loadCore();
+          renderCourses();
+          toast(L('تم حذف المهمة', 'Task deleted'));
+        }));
+      }
+    }
+
+    /* ---------------- 2. Course Reviews Moderation ---------------- */
+    async function renderReviews() {
+      $('#view').innerHTML = `<div class="card"><div class="small">${L('جاري تحميل تقييمات الدورات…', 'Loading course reviews…')}</div></div>`;
+      const snap = await db.collection('courseReviews').get();
+      const reviews = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+
+      const courseMap = Object.fromEntries(COURSES.map((c) => [c.id, c]));
+
+      $('#view').innerHTML = `
+        <div class="card">
+          <h2>${L('مراجعة وحذف تقييمات الطلاب', 'Course Reviews Moderation')} (${reviews.length})</h2>
+          <div class="grid2">
+            <select class="fi" id="rvCourseFilter">
+              <option value="">${L('كل الدورات', 'All Courses')}</option>
+              ${COURSES.map((c) => `<option value="${esc(c.id)}">${esc(lang === 'ar' ? c.title : (c.titleEn || c.title))}</option>`).join('')}
+            </select>
+            <input class="fi" id="rvSearch" placeholder="${L('بحث باسم الطالب أو التعليق…', 'Search student or comment…')}">
+          </div>
+          <div id="rvList"></div>
+        </div>
+      `;
+
+      const draw = () => {
+        const cf = $('#rvCourseFilter').value;
+        const q = $('#rvSearch').value.trim().toLowerCase();
+        const filtered = reviews.filter((r) => {
+          if (cf && r.courseId !== cf) return false;
+          if (!q) return true;
+          return `${r.name || ''} ${r.nameEn || ''} ${r.comment || ''}`.toLowerCase().includes(q);
+        });
+        $('#rvList').innerHTML = filtered.length
+          ? filtered.map((r) => {
+              const c = courseMap[r.courseId];
+              return `
+                <div class="item">
+                  <div>
+                    <div><b>${esc(lang === 'ar' ? (r.name || r.nameEn || r.uid) : (r.nameEn || r.name || r.uid))}</b> · <span class="chip gold">${'★'.repeat(r.rating || 0)} (${r.rating || 0}/5)</span></div>
+                    <div class="small">${L('الدورة', 'Course')}: ${esc(c ? (lang === 'ar' ? c.title : (c.titleEn || c.title)) : r.courseId)} · ${esc(fmtTs(r.updatedAt || r.createdAt))}</div>
+                    <p style="margin-top:6px">${esc(r.comment || '')}</p>
+                  </div>
+                  <button class="btn err sm" data-delrv="${esc(r.id)}">${L('حذف التقييم', 'Delete Review')}</button>
+                </div>
+              `;
+            }).join('')
+          : `<p class="small">${L('لا توجد تقييمات مطابقة.', 'No matching reviews.')}</p>`;
+
+        $$('[data-delrv]').forEach((b) => {
+          b.onclick = async () => {
+            await db.doc('courseReviews/' + b.dataset.delrv).delete();
+            toast(L('تم حذف التقييم', 'Review deleted'));
+            renderReviews();
+          };
+        });
+      };
+
+      $('#rvCourseFilter').onchange = draw;
+      $('#rvSearch').oninput = draw;
+      draw();
+    }
+
+    /* ---------------- 3. Students & Badges ---------------- */
+    async function renderStudents() {
+      $('#view').innerHTML = `<div class="card"><div class="small">${L('جاري تحميل بيانات الطلاب والأوسمة…', 'Loading students and badges…')}</div></div>`;
+      const snap = await db.collection('users').limit(250).get();
+      const users = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const courseMap = Object.fromEntries(COURSES.map((c) => [c.id, c]));
+      const milestoneMap = Object.fromEntries(MILESTONES.map((m) => [m[0], m]));
+
+      const badgeLabel = (bid) => {
+        if (bid.startsWith('course:')) {
+          const cid = bid.slice(7);
+          const c = courseMap[cid];
+          if (c) return lang === 'ar' ? (c.badgeTitle || 'إتقان ' + c.title) : (c.badgeTitleEn || 'Mastery: ' + (c.titleEn || c.title));
+          return L('وسام دورة: ', 'Course Badge: ') + cid;
+        }
+        const m = milestoneMap[bid];
+        return m ? (lang === 'ar' ? m[1] : m[2]) : bid;
+      };
+
+      $('#view').innerHTML = `
+        <div class="card">
+          <h2>${L('الطلاب والأوسمة المكتسبة', 'Students & Earned Badges')} (${users.length})</h2>
+          <input class="fi" id="stSearch" placeholder="${L('بحث بالاسم أو البريد أو الهاتف…', 'Search by name, email or phone…')}">
+          <div id="stList"></div>
+        </div>
+      `;
+
+      const draw = () => {
+        const q = $('#stSearch').value.trim().toLowerCase();
+        const filtered = users.filter((u) =>
+          !q || `${u.nameAr || ''} ${u.nameEn || ''} ${u.email || ''} ${u.phone || ''}`.toLowerCase().includes(q)
+        );
+        $('#stList').innerHTML = filtered.map((u) => {
+          const badges = u.badges && typeof u.badges === 'object' ? Object.entries(u.badges) : [];
+          return `
+            <div class="item">
+              <div style="flex:1;min-width:260px">
+                <div><b>${esc(u.nameAr || u.nameEn || u.email || u.id)}</b> ${u.role === 'admin' ? '<span class="chip err">admin</span>' : ''} ${u.vip ? '<span class="chip gold">Pro</span>' : ''}</div>
+                <div class="small">${esc(u.email || '')} · ${esc(u.phone || '')} · ${L('الفرقة', 'Year')} ${esc(u.year || 1)} · ${L('الترم', 'Term')} ${esc(u.term || 1)}</div>
+                <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+                  ${badges.length
+                    ? badges.map(([bid, ts]) => `<span class="chip ok" title="${esc(fmtTs(ts))}">🏅 ${esc(badgeLabel(bid))} (${esc(fmtTs(ts))})</span>`).join('')
+                    : `<span class="small">${L('لا توجد أوسمة بعد', 'No badges earned yet')}</span>`}
+                </div>
+              </div>
+              <div class="row-acts">
+                <button class="btn ghost sm" data-vip="${esc(u.id)}">${u.vip ? L('إلغاء Pro', 'Revoke Pro') : L('تفعيل Pro', 'Grant Pro')}</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        $$('[data-vip]').forEach((b) => {
+          b.onclick = async () => {
+            const target = users.find((x) => x.id === b.dataset.vip);
+            if (!target) return;
+            const next = !target.vip;
+            await db.doc('users/' + target.id).set({ vip: next }, { merge: true });
+            target.vip = next;
+            draw();
+            toast(L('تم تحديث حالة الطالب', 'Student updated'));
+          };
+        });
+      };
+
+      $('#stSearch').oninput = draw;
+      draw();
+    }
+
+    /* ---------------- 4. Remote Updates (settings/app) & Owner HTML Download ---------------- */
+    async function renderUpdates() {
+      const snap = await db.doc('settings/app').get().catch(() => null);
+      const st = snap && snap.exists ? snap.data() : {};
+
+      const rulesSnippet = `match /courseReviews/{reviewId} {
+  allow read: if signedIn();
+  allow create, update: if signedIn()
+    && reviewId == request.auth.uid + '_' + request.resource.data.courseId
+    && request.resource.data.uid == request.auth.uid
+    && request.resource.data.rating is int
+    && request.resource.data.rating >= 1 && request.resource.data.rating <= 5
+    && request.resource.data.comment is string
+    && request.resource.data.comment.size() >= 3 && request.resource.data.comment.size() <= 400;
+  allow delete: if adm() || (signedIn() && resource.data.uid == request.auth.uid);
+}
+match /users/{uid} {
+  allow read: if signedIn() && (request.auth.uid == uid || adm());
+  allow update: if adm() || (signedIn() && request.auth.uid == uid
+    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role','wallet','vip','vipUntil','extra']));
+}
+match /settings/app { allow read: if true; allow write: if adm(); }
+match /settings/appdl { allow read: if true; allow write: if adm(); }`;
+
+      $('#view').innerHTML = `
+        <div class="card" style="border:2px solid var(--gold)">
+          <h2>${L('تحميل نسخة HTML الكاملة (للمالك/الأدمن فقط)', 'Owner-Only Full HTML Download')}</h2>
+          <p class="small" style="margin-bottom:12px">${L('هذا الرابط السري مخصص للمالك والأدمن فقط لتحميل ملف المنصة DrWael.html مباشرة، وممنوع تضمينه داخل تطبيق الطلاب.', 'Owner/admin-only secret link to download DrWael.html directly. Never include this in the student app.')}</p>
+          <a class="btn gold" href="${OWNER_HTML_DL_URL}" download="DrWael.html" target="_blank" rel="noopener">${L('⬇ تحميل DrWael.html للمالك فقط', '⬇ Download DrWael.html (Owner Only)')}</a>
+        </div>
+
+        <div class="card">
+          <h2>${L('إدارة التحديثات عن بُعد (settings/app)', 'Remote Updates Config (settings/app)')}</h2>
+          <div class="grid3">
+            <div><label class="lbl">webVer</label><input class="fi" id="u_webVer" dir="ltr" value="${esc(st.webVer || '1.0.0')}"></div>
+            <div><label class="lbl">androidVer</label><input class="fi" id="u_androidVer" dir="ltr" value="${esc(st.androidVer || '1.0.0')}"></div>
+            <div><label class="lbl">desktopVer</label><input class="fi" id="u_desktopVer" dir="ltr" value="${esc(st.desktopVer || '1.0.0')}"></div>
+          </div>
+          <div class="grid2">
+            <div><label class="lbl">androidUrl</label><input class="fi" id="u_androidUrl" dir="ltr" value="${esc(st.androidUrl || '/dl/android')}"></div>
+            <div><label class="lbl">desktopUrl</label><input class="fi" id="u_desktopUrl" dir="ltr" value="${esc(st.desktopUrl || '/dl/win')}"></div>
+          </div>
+          <label class="lbl">updateNotes</label>
+          <textarea class="fi" id="u_notes" rows="3">${esc(st.updateNotes || '')}</textarea>
+          <label class="agree"><input type="checkbox" id="u_force" ${st.forceUpdate ? 'checked' : ''}><span>${L('تحديث إجباري (forceUpdate)', 'Force Update (forceUpdate)')}</span></label>
+          <button class="btn navy" id="saveUpd">${L('حفظ إعدادات التحديث', 'Save Update Settings')}</button>
+        </div>
+
+        <div class="card">
+          <h2>${L('قواعد أمان Firestore المطلوبة', 'Required Firestore Security Rules')}</h2>
+          <pre class="rules">${esc(rulesSnippet)}</pre>
+          <button class="btn ghost sm" id="copyRules" style="margin-top:10px">${L('نسخ القواعد', 'Copy Rules')}</button>
+        </div>
+      `;
+
+      $('#saveUpd').onclick = async () => {
+        await db.doc('settings/app').set({
+          webVer: $('#u_webVer').value.trim(),
+          androidVer: $('#u_androidVer').value.trim(),
+          desktopVer: $('#u_desktopVer').value.trim(),
+          androidUrl: $('#u_androidUrl').value.trim(),
+          desktopUrl: $('#u_desktopUrl').value.trim(),
+          updateNotes: $('#u_notes').value.trim(),
+          forceUpdate: $('#u_force').checked,
+        }, { merge: true });
+        toast(L('تم حفظ إعدادات التحديث في settings/app', 'Saved settings/app'));
+      };
+
+      $('#copyRules').onclick = () => {
+        navigator.clipboard.writeText(rulesSnippet).then(() => toast(L('تم النسخ', 'Copied'))).catch(() => {});
+      };
+    }
+
+    applyLang();
+  </script>
+</body>
+</html>

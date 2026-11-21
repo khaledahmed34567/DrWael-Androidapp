@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function adm() {
+      return signedIn() && (
+        request.auth.token.email == 'khwailedapp@gmail.com' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+
+    function enrolled(courseId) {
+      let c = get(/databases/$(database)/documents/courses/$(courseId)).data;
+      return c.price == 0 || c.price == null ||
+        exists(/databases/$(database)/documents/subs/$(request.auth.uid + '_' + courseId));
+    }
+
+    match /settings/app {
+      allow read: if true;
+      allow write: if adm();
+    }
+
+    match /settings/appdl {
+      allow read: if true;
+      allow write: if adm();
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || adm());
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update: if adm() || (
+        signedIn() && request.auth.uid == uid &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'wallet', 'vip', 'vipUntil', 'extra'])
+      );
+      allow delete: if adm();
+    }
+
+    match /courses/{courseId} {
+      allow read: if signedIn();
+      allow write: if adm();
+    }
+
+    match /lectures/{lectureId} {
+      allow read: if signedIn();
+      allow write: if adm();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedIn();
+      allow write: if adm();
+    }
+
+    match /progress/{docId} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || adm());
+      allow create, update: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if adm();
+    }
+
+    match /courseReviews/{reviewId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn()
+        && reviewId == request.auth.uid + '_' + request.resource.data.courseId
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.comment is string
+        && request.resource.data.comment.size() >= 3
+        && request.resource.data.comment.size() <= 400
+        && (adm() || enrolled(request.resource.data.courseId));
+      allow delete: if adm() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /subs/{subId} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || adm());
+      allow write: if adm();
+    }
+
+    match /payments/{payId} {
+      allow read: if signedIn() && (resource.data.uid == request.auth.uid || adm());
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if adm();
+    }
+
+    match /notifs/{notifId} {
+      allow read: if signedIn();
+      allow write: if adm();
+    }
+
+    match /{x=**} {
+      allow read, write: if adm();
+    }
+  }
+}
