@@ -1,8 +1,6 @@
 name: Build Android APK
 
 on:
-  push:
-    branches: [ main, master ]
   workflow_dispatch:
 
 permissions:
@@ -88,7 +86,7 @@ jobs:
           cp "dist/DrWael-$VERSION_NAME.apk" dist/DrWael.apk
           echo "VERSION_NAME=$VERSION_NAME" >> "$GITHUB_ENV"
           keytool -list -v -keystore "$PROJECT_DIR/app/keystore/drwael-release.jks" \
-            -storepass "${KEYSTORE_PASSWORD:-DrWael@Store2026}" 2>/dev/null | grep -E "Alias|SHA1|SHA256" | tee dist/fingerprint.txt || true
+            -storepass "${KEYSTORE_PASSWORD}" 2>/dev/null | grep -E "Alias|SHA1|SHA256" | tee dist/fingerprint.txt || true
           {
             echo "### DrWael $VERSION_NAME"
             echo '```'
